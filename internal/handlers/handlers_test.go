@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"testing"
 	"time"
 
@@ -383,5 +384,125 @@ func TestPaymentRelationships(t *testing.T) {
 	}
 	if len(got.Data.Relationships.PaymentSubmissions.Data) != 1 {
 		t.Errorf("expected 1 submission relationship, got %d", len(got.Data.Relationships.PaymentSubmissions.Data))
+	}
+}
+
+func TestPaymentFPSDefaults(t *testing.T) {
+	srv := setupServer()
+	defer srv.Close()
+
+	// Create payment with no FPS fields
+	payment := models.Payment{
+		Resource:   models.Resource{ID: "fps-test"},
+		Attributes: models.PaymentAttributes{Amount: "25.00", Currency: "GBP"},
+	}
+	body, _ := json.Marshal(jsonapi.DataEnvelope[models.Payment]{Data: payment})
+	resp, err := http.Post(srv.URL+"/v1/transaction/payments", jsonapi.ContentType, bytes.NewReader(body))
+	if err != nil {
+		t.Fatalf("POST payment: %v", err)
+	}
+	defer resp.Body.Close()
+
+	var created jsonapi.DataEnvelope[models.Payment]
+	json.NewDecoder(resp.Body).Decode(&created)
+	attrs := created.Data.Attributes
+
+	if attrs.PaymentScheme != "FPS" {
+		t.Errorf("payment_scheme = %q, want FPS", attrs.PaymentScheme)
+	}
+	if attrs.SchemePaymentType != "ImmediatePayment" {
+		t.Errorf("scheme_payment_type = %q, want ImmediatePayment", attrs.SchemePaymentType)
+	}
+	if matched, _ := regexp.MatchString(`^\d{6}$`, attrs.NumericReference); !matched {
+		t.Errorf("numeric_reference = %q, want 6 digits", attrs.NumericReference)
+	}
+	if matched, _ := regexp.MatchString(`^FPS\d{14}$`, attrs.EndToEndReference); !matched {
+		t.Errorf("end_to_end_reference = %q, want FPS+date+6digits", attrs.EndToEndReference)
+	}
+	if matched, _ := regexp.MatchString(`^\d{4}-\d{2}-\d{2}$`, attrs.ProcessingDate); !matched {
+		t.Errorf("processing_date = %q, want YYYY-MM-DD", attrs.ProcessingDate)
+	}
+}
+
+func TestPaymentFPSClientValuesPreserved(t *testing.T) {
+	srv := setupServer()
+	defer srv.Close()
+
+	payment := models.Payment{
+		Resource: models.Resource{ID: "fps-custom"},
+		Attributes: models.PaymentAttributes{
+			Amount:            "10.00",
+			Currency:          "GBP",
+			PaymentScheme:     "BACS",
+			SchemePaymentType: "Priority",
+			NumericReference:  "999999",
+			EndToEndReference: "CUSTOM-REF-123",
+			ProcessingDate:    "2025-01-15",
+		},
+	}
+	body, _ := json.Marshal(jsonapi.DataEnvelope[models.Payment]{Data: payment})
+	resp, err := http.Post(srv.URL+"/v1/transaction/payments", jsonapi.ContentType, bytes.NewReader(body))
+	if err != nil {
+		t.Fatalf("POST payment: %v", err)
+	}
+	defer resp.Body.Close()
+
+	var created jsonapi.DataEnvelope[models.Payment]
+	json.NewDecoder(resp.Body).Decode(&created)
+	attrs := created.Data.Attributes
+
+	if attrs.PaymentScheme != "BACS" {
+		t.Errorf("payment_scheme = %q, want BACS", attrs.PaymentScheme)
+	}
+	if attrs.SchemePaymentType != "Priority" {
+		t.Errorf("scheme_payment_type = %q, want Priority", attrs.SchemePaymentType)
+	}
+	if attrs.NumericReference != "999999" {
+		t.Errorf("numeric_reference = %q, want 999999", attrs.NumericReference)
+	}
+	if attrs.EndToEndReference != "CUSTOM-REF-123" {
+		t.Errorf("end_to_end_reference = %q, want CUSTOM-REF-123", attrs.EndToEndReference)
+	}
+	if attrs.ProcessingDate != "2025-01-15" {
+		t.Errorf("processing_date = %q, want 2025-01-15", attrs.ProcessingDate)
+	}
+}
+
+func TestSubmissionSchemeTransactionID(t *testing.T) {
+	srv := setupServer()
+	defer srv.Close()
+
+	// Create payment
+	payment := models.Payment{
+		Resource:   models.Resource{ID: "p-stid"},
+		Attributes: models.PaymentAttributes{Amount: "50.00", Currency: "GBP"},
+	}
+	body, _ := json.Marshal(jsonapi.DataEnvelope[models.Payment]{Data: payment})
+	http.Post(srv.URL+"/v1/transaction/payments", jsonapi.ContentType, bytes.NewReader(body))
+
+	// Create submission — should get auto scheme_transaction_id
+	sub := models.PaymentSubmission{Resource: models.Resource{ID: "s-stid"}}
+	body, _ = json.Marshal(jsonapi.DataEnvelope[models.PaymentSubmission]{Data: sub})
+	resp, _ := http.Post(srv.URL+"/v1/transaction/payments/p-stid/submissions", jsonapi.ContentType, bytes.NewReader(body))
+	defer resp.Body.Close()
+
+	var created jsonapi.DataEnvelope[models.PaymentSubmission]
+	json.NewDecoder(resp.Body).Decode(&created)
+
+	if matched, _ := regexp.MatchString(`^\d{26}$`, created.Data.Attributes.SchemeTransactionID); !matched {
+		t.Errorf("scheme_transaction_id = %q, want 26 digits", created.Data.Attributes.SchemeTransactionID)
+	}
+
+	// Create admission — should also get auto scheme_transaction_id
+	adm := models.PaymentAdmission{Resource: models.Resource{ID: "a-stid"}}
+	body, _ = json.Marshal(jsonapi.DataEnvelope[models.PaymentAdmission]{Data: adm})
+	resp2, _ := http.Post(srv.URL+"/v1/transaction/payments/p-stid/admissions", jsonapi.ContentType, bytes.NewReader(body))
+	defer resp2.Body.Close()
+
+	var admCreated jsonapi.DataEnvelope[models.PaymentAdmission]
+	json.NewDecoder(resp2.Body).Decode(&admCreated)
+
+	if matched, _ := regexp.MatchString(`^\d{26}$`, admCreated.Data.Attributes.SchemeTransactionID); !matched {
+		t.Errorf("admission scheme_transaction_id = %q, want 26 digits", admCreated.Data.Attributes.SchemeTransactionID)
 	}
 }

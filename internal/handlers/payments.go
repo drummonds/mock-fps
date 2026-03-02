@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/nibble/mock-fps/internal/fpsid"
 	"github.com/nibble/mock-fps/internal/jsonapi"
 	"github.com/nibble/mock-fps/internal/models"
 	"github.com/nibble/mock-fps/internal/store"
@@ -35,6 +36,23 @@ func (h *PaymentHandler) Create(w http.ResponseWriter, r *http.Request) {
 	now := time.Now().UTC()
 	p.CreatedOn = now
 	p.ModifiedOn = now
+
+	// Default FPS attributes
+	if p.Attributes.PaymentScheme == "" {
+		p.Attributes.PaymentScheme = "FPS"
+	}
+	if p.Attributes.SchemePaymentType == "" {
+		p.Attributes.SchemePaymentType = "ImmediatePayment"
+	}
+	if p.Attributes.NumericReference == "" {
+		p.Attributes.NumericReference = fpsid.NumericReference()
+	}
+	if p.Attributes.EndToEndReference == "" {
+		p.Attributes.EndToEndReference = fpsid.EndToEndReference()
+	}
+	if p.Attributes.ProcessingDate == "" {
+		p.Attributes.ProcessingDate = fpsid.ProcessingDate()
+	}
 
 	if err := h.store.CreatePayment(p); err != nil {
 		if errors.Is(err, store.ErrConflict) {

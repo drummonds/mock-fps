@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/nibble/mock-fps/internal/fpsid"
 	"github.com/nibble/mock-fps/internal/jsonapi"
 	"github.com/nibble/mock-fps/internal/lifecycle"
 	"github.com/nibble/mock-fps/internal/models"
@@ -51,6 +52,9 @@ func (h *PaymentSubmissionHandler) Create(w http.ResponseWriter, r *http.Request
 	s.ModifiedOn = now
 	s.Attributes.Status = lifecycle.PaymentSubmissionChain[0]
 	s.Attributes.SubmissionDate = now.Format(time.DateOnly)
+	if s.Attributes.SchemeTransactionID == "" {
+		s.Attributes.SchemeTransactionID = fpsid.SchemeTransactionID()
+	}
 
 	if err := h.store.CreatePaymentSubmission(paymentID, s); err != nil {
 		if errors.Is(err, store.ErrConflict) {

@@ -8,8 +8,9 @@ type PaymentAdmission struct {
 
 // PaymentAdmissionAttributes holds admission data.
 type PaymentAdmissionAttributes struct {
-	Status        string `json:"status"`
-	AdmissionDate string `json:"admission_date,omitempty"`
+	Status              string `json:"status"`
+	AdmissionDate       string `json:"admission_date,omitempty"`
+	SchemeTransactionID string `json:"scheme_transaction_id,omitempty"`
 }
 
 // AdmissionTask represents a task on an admission.
