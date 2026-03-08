@@ -88,4 +88,8 @@ func RegisterRoutes(mux *http.ServeMux, s store.Store, engine *lifecycle.Engine)
 		w.Write([]byte(`{"status":"ok"}`))
 	})
 
+	// Admin — stand-in mode
+	admin := NewAdminHandler(engine)
+	mux.HandleFunc("GET /admin/standin", admin.GetStandIn)
+	mux.HandleFunc("PUT /admin/standin", admin.SetStandIn)
 }

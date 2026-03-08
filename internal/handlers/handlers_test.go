@@ -468,6 +468,111 @@ func TestPaymentFPSClientValuesPreserved(t *testing.T) {
 	}
 }
 
+func TestStandInGetDefault(t *testing.T) {
+	srv := setupServer()
+	defer srv.Close()
+
+	resp, _ := http.Get(srv.URL + "/admin/standin")
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200, got %d", resp.StatusCode)
+	}
+
+	var got struct {
+		Enabled     bool `json:"enabled"`
+		QueueLength int  `json:"queue_length"`
+	}
+	json.NewDecoder(resp.Body).Decode(&got)
+	if got.Enabled {
+		t.Error("expected standin disabled by default")
+	}
+	if got.QueueLength != 0 {
+		t.Errorf("expected queue_length 0, got %d", got.QueueLength)
+	}
+}
+
+func TestStandInToggle(t *testing.T) {
+	srv := setupServer()
+	defer srv.Close()
+
+	// Enable standin
+	body, _ := json.Marshal(map[string]bool{"enabled": true})
+	req, _ := http.NewRequest(http.MethodPut, srv.URL+"/admin/standin", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	resp, _ := http.DefaultClient.Do(req)
+	defer resp.Body.Close()
+
+	var got struct {
+		Enabled     bool `json:"enabled"`
+		QueueLength int  `json:"queue_length"`
+	}
+	json.NewDecoder(resp.Body).Decode(&got)
+	if !got.Enabled {
+		t.Error("expected standin enabled after PUT")
+	}
+}
+
+func TestStandInQueuesSubmissions(t *testing.T) {
+	srv := setupServer()
+	defer srv.Close()
+
+	// Enable standin
+	body, _ := json.Marshal(map[string]bool{"enabled": true})
+	req, _ := http.NewRequest(http.MethodPut, srv.URL+"/admin/standin", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	http.DefaultClient.Do(req)
+
+	// Create payment + submission
+	payment := models.Payment{Resource: models.Resource{ID: "p1"}, Attributes: models.PaymentAttributes{Amount: "100.00", Currency: "GBP"}}
+	body, _ = json.Marshal(jsonapi.DataEnvelope[models.Payment]{Data: payment})
+	http.Post(srv.URL+"/v1/transaction/payments", jsonapi.ContentType, bytes.NewReader(body))
+
+	sub := models.PaymentSubmission{Resource: models.Resource{ID: "s1"}}
+	body, _ = json.Marshal(jsonapi.DataEnvelope[models.PaymentSubmission]{Data: sub})
+	http.Post(srv.URL+"/v1/transaction/payments/p1/submissions", jsonapi.ContentType, bytes.NewReader(body))
+
+	// Wait a bit — lifecycle should NOT progress
+	time.Sleep(200 * time.Millisecond)
+
+	// Check submission is still at initial status
+	resp, _ := http.Get(srv.URL + "/v1/transaction/payments/p1/submissions/s1")
+	defer resp.Body.Close()
+	var got jsonapi.DataEnvelope[models.PaymentSubmission]
+	json.NewDecoder(resp.Body).Decode(&got)
+	if got.Data.Attributes.Status != "accepted" {
+		t.Errorf("expected status accepted (queued), got %s", got.Data.Attributes.Status)
+	}
+
+	// Check queue length is 1
+	resp2, _ := http.Get(srv.URL + "/admin/standin")
+	defer resp2.Body.Close()
+	var state struct {
+		QueueLength int `json:"queue_length"`
+	}
+	json.NewDecoder(resp2.Body).Decode(&state)
+	if state.QueueLength != 1 {
+		t.Errorf("expected queue_length 1, got %d", state.QueueLength)
+	}
+
+	// Disable standin — transitions should drain
+	body, _ = json.Marshal(map[string]bool{"enabled": false})
+	req, _ = http.NewRequest(http.MethodPut, srv.URL+"/admin/standin", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	http.DefaultClient.Do(req)
+
+	// Wait for lifecycle to complete
+	time.Sleep(200 * time.Millisecond)
+
+	resp3, _ := http.Get(srv.URL + "/v1/transaction/payments/p1/submissions/s1")
+	defer resp3.Body.Close()
+	var final jsonapi.DataEnvelope[models.PaymentSubmission]
+	json.NewDecoder(resp3.Body).Decode(&final)
+	if final.Data.Attributes.Status != "delivery_confirmed" {
+		t.Errorf("expected delivery_confirmed after drain, got %s", final.Data.Attributes.Status)
+	}
+}
+
 func TestSubmissionSchemeTransactionID(t *testing.T) {
 	srv := setupServer()
 	defer srv.Close()
