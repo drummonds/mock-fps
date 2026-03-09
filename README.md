@@ -2,7 +2,6 @@
 
 A Go mock server simulating the Form3 Faster Payments Service (FPS) API. Returns realistic JSON:API responses with async lifecycle status transitions, stand-in mode, and webhook notifications.
 
-Full documentation: [mock-fps-docs](https://github.com/drummonds/mock-fps-docs) (coming soon)
 
 ## Quick start
 
@@ -45,6 +44,15 @@ task test     # Run tests with -race
 task check    # Test + clean
 task clean    # Remove build artifacts
 ```
+
+## Links
+
+| | |
+|---|---|
+| Documentation | https://h3-mock-fps.statichost.page/ |
+| Source (Codeberg) | https://codeberg.org/hum3/mock-fps |
+| Mirror (GitHub) | https://github.com/drummonds/mock-fps |
+| Docs repo | https://codeberg.org/hum3/mock-fps-docs |
 
 ## License
 
