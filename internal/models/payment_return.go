@@ -8,9 +8,9 @@ type ReturnPayment struct {
 
 // ReturnPaymentAttributes holds return data.
 type ReturnPaymentAttributes struct {
-	Amount        string `json:"amount"`
-	Currency      string `json:"currency"`
-	ReturnCode    string `json:"return_code,omitempty"`
-	ReturnReason  string `json:"return_reason,omitempty"`
-	SchemeStatus  string `json:"scheme_status,omitempty"`
+	Amount       string `json:"amount"`
+	Currency     string `json:"currency"`
+	ReturnCode   string `json:"return_code,omitempty"`
+	ReturnReason string `json:"return_reason,omitempty"`
+	SchemeStatus string `json:"scheme_status,omitempty"`
 }

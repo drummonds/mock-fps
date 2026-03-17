@@ -1,4 +1,5 @@
 bin/
+.task
 
 .vscode
 .claude/settings.json

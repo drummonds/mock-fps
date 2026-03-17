@@ -8,7 +8,7 @@ type RecallDecision struct {
 
 // RecallDecisionAttributes holds recall decision data.
 type RecallDecisionAttributes struct {
-	Answer       string `json:"answer,omitempty"`
-	Reason       string `json:"reason,omitempty"`
-	Status       string `json:"status,omitempty"`
+	Answer string `json:"answer,omitempty"`
+	Reason string `json:"reason,omitempty"`
+	Status string `json:"status,omitempty"`
 }

@@ -76,7 +76,7 @@ func TestPaymentSubmissionCRUD(t *testing.T) {
 	s.CreatePayment(newPayment("p1"))
 
 	sub := models.PaymentSubmission{
-		Resource: models.Resource{ID: "s1", Type: models.ResourceTypePaymentSubmission},
+		Resource:   models.Resource{ID: "s1", Type: models.ResourceTypePaymentSubmission},
 		Attributes: models.PaymentSubmissionAttributes{Status: "accepted"},
 	}
 
@@ -156,7 +156,7 @@ func TestNestedResourceKeys(t *testing.T) {
 	s.CreateReturn("p1", ret)
 
 	retSub := models.ReturnSubmission{
-		Resource: models.Resource{ID: "rs1", Type: models.ResourceTypeReturnSubmission},
+		Resource:   models.Resource{ID: "rs1", Type: models.ResourceTypeReturnSubmission},
 		Attributes: models.ReturnSubmissionAttributes{Status: "accepted"},
 	}
 	s.CreateReturnSubmission("p1", "r1", retSub)
@@ -177,7 +177,7 @@ func TestNestedResourceKeys(t *testing.T) {
 	s.CreateRecallDecision("p1", "rec1", dec)
 
 	ds := models.RecallDecisionSubmission{
-		Resource: models.Resource{ID: "ds1", Type: models.ResourceTypeRecallDecisionSubmission},
+		Resource:   models.Resource{ID: "ds1", Type: models.ResourceTypeRecallDecisionSubmission},
 		Attributes: models.RecallDecisionSubmissionAttributes{Status: "accepted"},
 	}
 	s.CreateRecallDecisionSubmission("p1", "rec1", "d1", ds)

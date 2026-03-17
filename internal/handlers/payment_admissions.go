@@ -111,9 +111,9 @@ func (h *PaymentAdmissionHandler) PatchTask(w http.ResponseWriter, r *http.Reque
 			// Auto-create the task
 			t = models.AdmissionTask{
 				Resource: models.Resource{
-					Type:      "admission_tasks",
-					ID:        taskID,
-					CreatedOn: time.Now().UTC(),
+					Type:       "admission_tasks",
+					ID:         taskID,
+					CreatedOn:  time.Now().UTC(),
 					ModifiedOn: time.Now().UTC(),
 				},
 			}

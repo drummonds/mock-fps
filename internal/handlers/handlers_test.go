@@ -115,7 +115,10 @@ func TestPaymentNotFound(t *testing.T) {
 	srv := setupServer()
 	defer srv.Close()
 
-	resp, _ := http.Get(srv.URL + "/v1/transaction/payments/nonexistent")
+	resp, err := http.Get(srv.URL + "/v1/transaction/payments/nonexistent")
+	if err != nil {
+		t.Fatalf("GET nonexistent: %v", err)
+	}
 	if resp.StatusCode != http.StatusNotFound {
 		t.Errorf("expected 404, got %d", resp.StatusCode)
 	}
@@ -156,7 +159,10 @@ func TestPaymentSubmissionLifecycle(t *testing.T) {
 	time.Sleep(200 * time.Millisecond)
 
 	// Check final status
-	resp2, _ := http.Get(srv.URL + "/v1/transaction/payments/p1/submissions/s1")
+	resp2, err := http.Get(srv.URL + "/v1/transaction/payments/p1/submissions/s1")
+	if err != nil {
+		t.Fatalf("GET submission: %v", err)
+	}
 	defer resp2.Body.Close()
 
 	var final jsonapi.DataEnvelope[models.PaymentSubmission]
@@ -172,7 +178,10 @@ func TestSubmissionRequiresPayment(t *testing.T) {
 
 	sub := models.PaymentSubmission{Resource: models.Resource{ID: "s1"}}
 	body, _ := json.Marshal(jsonapi.DataEnvelope[models.PaymentSubmission]{Data: sub})
-	resp, _ := http.Post(srv.URL+"/v1/transaction/payments/nonexistent/submissions", jsonapi.ContentType, bytes.NewReader(body))
+	resp, err := http.Post(srv.URL+"/v1/transaction/payments/nonexistent/submissions", jsonapi.ContentType, bytes.NewReader(body))
+	if err != nil {
+		t.Fatalf("POST submission: %v", err)
+	}
 	if resp.StatusCode != http.StatusNotFound {
 		t.Errorf("expected 404, got %d", resp.StatusCode)
 	}
@@ -196,20 +205,29 @@ func TestReturnFlow(t *testing.T) {
 		Attributes: models.ReturnPaymentAttributes{Amount: "50.00", Currency: "GBP", ReturnCode: "1100"},
 	}
 	body, _ = json.Marshal(jsonapi.DataEnvelope[models.ReturnPayment]{Data: ret})
-	resp, _ := http.Post(srv.URL+"/v1/transaction/payments/p1/returns", jsonapi.ContentType, bytes.NewReader(body))
+	resp, err := http.Post(srv.URL+"/v1/transaction/payments/p1/returns", jsonapi.ContentType, bytes.NewReader(body))
+	if err != nil {
+		t.Fatalf("POST return: %v", err)
+	}
 	if resp.StatusCode != http.StatusCreated {
 		t.Fatalf("expected 201, got %d", resp.StatusCode)
 	}
 
 	// Get return
-	resp2, _ := http.Get(srv.URL + "/v1/transaction/payments/p1/returns/r1")
+	resp2, err := http.Get(srv.URL + "/v1/transaction/payments/p1/returns/r1")
+	if err != nil {
+		t.Fatalf("GET return: %v", err)
+	}
 	defer resp2.Body.Close()
 	if resp2.StatusCode != http.StatusOK {
 		t.Errorf("expected 200, got %d", resp2.StatusCode)
 	}
 
 	// List returns
-	resp3, _ := http.Get(srv.URL + "/v1/transaction/payments/p1/returns")
+	resp3, err := http.Get(srv.URL + "/v1/transaction/payments/p1/returns")
+	if err != nil {
+		t.Fatalf("GET returns: %v", err)
+	}
 	defer resp3.Body.Close()
 	var list jsonapi.ListEnvelope[models.ReturnPayment]
 	json.NewDecoder(resp3.Body).Decode(&list)
@@ -233,20 +251,29 @@ func TestSubscriptionCRUD(t *testing.T) {
 	body, _ := json.Marshal(jsonapi.DataEnvelope[models.Subscription]{Data: sub})
 
 	// Create
-	resp, _ := http.Post(srv.URL+"/v1/notification/subscriptions", jsonapi.ContentType, bytes.NewReader(body))
+	resp, err := http.Post(srv.URL+"/v1/notification/subscriptions", jsonapi.ContentType, bytes.NewReader(body))
+	if err != nil {
+		t.Fatalf("POST subscription: %v", err)
+	}
 	if resp.StatusCode != http.StatusCreated {
 		t.Fatalf("expected 201, got %d", resp.StatusCode)
 	}
 
 	// Get
-	resp2, _ := http.Get(srv.URL + "/v1/notification/subscriptions/sub1")
+	resp2, err := http.Get(srv.URL + "/v1/notification/subscriptions/sub1")
+	if err != nil {
+		t.Fatalf("GET subscription: %v", err)
+	}
 	defer resp2.Body.Close()
 	if resp2.StatusCode != http.StatusOK {
 		t.Errorf("expected 200, got %d", resp2.StatusCode)
 	}
 
 	// List
-	resp3, _ := http.Get(srv.URL + "/v1/notification/subscriptions")
+	resp3, err := http.Get(srv.URL + "/v1/notification/subscriptions")
+	if err != nil {
+		t.Fatalf("GET subscriptions: %v", err)
+	}
 	defer resp3.Body.Close()
 	var list jsonapi.ListEnvelope[models.Subscription]
 	json.NewDecoder(resp3.Body).Decode(&list)
@@ -264,7 +291,10 @@ func TestSubscriptionCRUD(t *testing.T) {
 	patchBody, _ := json.Marshal(jsonapi.DataEnvelope[models.Subscription]{Data: patch})
 	req, _ := http.NewRequest(http.MethodPatch, srv.URL+"/v1/notification/subscriptions/sub1", bytes.NewReader(patchBody))
 	req.Header.Set("Content-Type", jsonapi.ContentType)
-	resp4, _ := http.DefaultClient.Do(req)
+	resp4, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("PATCH subscription: %v", err)
+	}
 	defer resp4.Body.Close()
 	if resp4.StatusCode != http.StatusOK {
 		t.Errorf("expected 200 for PATCH, got %d", resp4.StatusCode)
@@ -272,7 +302,10 @@ func TestSubscriptionCRUD(t *testing.T) {
 
 	// Delete
 	delReq, _ := http.NewRequest(http.MethodDelete, srv.URL+"/v1/notification/subscriptions/sub1", nil)
-	resp5, _ := http.DefaultClient.Do(delReq)
+	resp5, err := http.DefaultClient.Do(delReq)
+	if err != nil {
+		t.Fatalf("DELETE subscription: %v", err)
+	}
 	if resp5.StatusCode != http.StatusNoContent {
 		t.Errorf("expected 204 for DELETE, got %d", resp5.StatusCode)
 	}
@@ -289,7 +322,10 @@ func TestRecallDecisionFlow(t *testing.T) {
 
 	recall := models.Recall{Resource: models.Resource{ID: "rec1"}}
 	body, _ = json.Marshal(jsonapi.DataEnvelope[models.Recall]{Data: recall})
-	resp, _ := http.Post(srv.URL+"/v1/transaction/payments/p1/recalls", jsonapi.ContentType, bytes.NewReader(body))
+	resp, err := http.Post(srv.URL+"/v1/transaction/payments/p1/recalls", jsonapi.ContentType, bytes.NewReader(body))
+	if err != nil {
+		t.Fatalf("POST recall: %v", err)
+	}
 	if resp.StatusCode != http.StatusCreated {
 		t.Fatalf("create recall: expected 201, got %d", resp.StatusCode)
 	}
@@ -299,14 +335,20 @@ func TestRecallDecisionFlow(t *testing.T) {
 		Attributes: models.RecallDecisionAttributes{Answer: "accepted"},
 	}
 	body, _ = json.Marshal(jsonapi.DataEnvelope[models.RecallDecision]{Data: decision})
-	resp, _ = http.Post(srv.URL+"/v1/transaction/payments/p1/recalls/rec1/decisions", jsonapi.ContentType, bytes.NewReader(body))
+	resp, err = http.Post(srv.URL+"/v1/transaction/payments/p1/recalls/rec1/decisions", jsonapi.ContentType, bytes.NewReader(body))
+	if err != nil {
+		t.Fatalf("POST decision: %v", err)
+	}
 	if resp.StatusCode != http.StatusCreated {
 		t.Fatalf("create decision: expected 201, got %d", resp.StatusCode)
 	}
 
 	decSub := models.RecallDecisionSubmission{Resource: models.Resource{ID: "ds1"}}
 	body, _ = json.Marshal(jsonapi.DataEnvelope[models.RecallDecisionSubmission]{Data: decSub})
-	resp, _ = http.Post(srv.URL+"/v1/transaction/payments/p1/recalls/rec1/decisions/dec1/submissions", jsonapi.ContentType, bytes.NewReader(body))
+	resp, err = http.Post(srv.URL+"/v1/transaction/payments/p1/recalls/rec1/decisions/dec1/submissions", jsonapi.ContentType, bytes.NewReader(body))
+	if err != nil {
+		t.Fatalf("POST decision submission: %v", err)
+	}
 	if resp.StatusCode != http.StatusCreated {
 		t.Fatalf("create decision submission: expected 201, got %d", resp.StatusCode)
 	}
@@ -314,7 +356,10 @@ func TestRecallDecisionFlow(t *testing.T) {
 	// Wait for lifecycle
 	time.Sleep(100 * time.Millisecond)
 
-	resp2, _ := http.Get(srv.URL + "/v1/transaction/payments/p1/recalls/rec1/decisions/dec1/submissions/ds1")
+	resp2, err := http.Get(srv.URL + "/v1/transaction/payments/p1/recalls/rec1/decisions/dec1/submissions/ds1")
+	if err != nil {
+		t.Fatalf("GET decision submission: %v", err)
+	}
 	defer resp2.Body.Close()
 	var got jsonapi.DataEnvelope[models.RecallDecisionSubmission]
 	json.NewDecoder(resp2.Body).Decode(&got)
@@ -334,21 +379,30 @@ func TestReversalFlow(t *testing.T) {
 
 	rev := models.Reversal{Resource: models.Resource{ID: "rev1"}, Attributes: models.ReversalAttributes{Amount: "100.00"}}
 	body, _ = json.Marshal(jsonapi.DataEnvelope[models.Reversal]{Data: rev})
-	resp, _ := http.Post(srv.URL+"/v1/transaction/payments/p1/reversals", jsonapi.ContentType, bytes.NewReader(body))
+	resp, err := http.Post(srv.URL+"/v1/transaction/payments/p1/reversals", jsonapi.ContentType, bytes.NewReader(body))
+	if err != nil {
+		t.Fatalf("POST reversal: %v", err)
+	}
 	if resp.StatusCode != http.StatusCreated {
 		t.Fatalf("create reversal: expected 201, got %d", resp.StatusCode)
 	}
 
 	revSub := models.ReversalSubmission{Resource: models.Resource{ID: "rs1"}}
 	body, _ = json.Marshal(jsonapi.DataEnvelope[models.ReversalSubmission]{Data: revSub})
-	resp, _ = http.Post(srv.URL+"/v1/transaction/payments/p1/reversals/rev1/submissions", jsonapi.ContentType, bytes.NewReader(body))
+	resp, err = http.Post(srv.URL+"/v1/transaction/payments/p1/reversals/rev1/submissions", jsonapi.ContentType, bytes.NewReader(body))
+	if err != nil {
+		t.Fatalf("POST reversal submission: %v", err)
+	}
 	if resp.StatusCode != http.StatusCreated {
 		t.Fatalf("create reversal submission: expected 201, got %d", resp.StatusCode)
 	}
 
 	time.Sleep(100 * time.Millisecond)
 
-	resp2, _ := http.Get(srv.URL + "/v1/transaction/payments/p1/reversals/rev1/submissions/rs1")
+	resp2, err := http.Get(srv.URL + "/v1/transaction/payments/p1/reversals/rev1/submissions/rs1")
+	if err != nil {
+		t.Fatalf("GET reversal submission: %v", err)
+	}
 	defer resp2.Body.Close()
 	var got jsonapi.DataEnvelope[models.ReversalSubmission]
 	json.NewDecoder(resp2.Body).Decode(&got)
@@ -371,7 +425,10 @@ func TestPaymentRelationships(t *testing.T) {
 	http.Post(srv.URL+"/v1/transaction/payments/p1/submissions", jsonapi.ContentType, bytes.NewReader(body))
 
 	// Get payment - should have relationships
-	resp, _ := http.Get(srv.URL + "/v1/transaction/payments/p1")
+	resp, err := http.Get(srv.URL + "/v1/transaction/payments/p1")
+	if err != nil {
+		t.Fatalf("GET payment: %v", err)
+	}
 	defer resp.Body.Close()
 	var got jsonapi.DataEnvelope[models.Payment]
 	json.NewDecoder(resp.Body).Decode(&got)
@@ -472,7 +529,10 @@ func TestStandInGetDefault(t *testing.T) {
 	srv := setupServer()
 	defer srv.Close()
 
-	resp, _ := http.Get(srv.URL + "/admin/standin")
+	resp, err := http.Get(srv.URL + "/admin/standin")
+	if err != nil {
+		t.Fatalf("GET standin: %v", err)
+	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
@@ -500,7 +560,10 @@ func TestStandInToggle(t *testing.T) {
 	body, _ := json.Marshal(map[string]bool{"enabled": true})
 	req, _ := http.NewRequest(http.MethodPut, srv.URL+"/admin/standin", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	resp, _ := http.DefaultClient.Do(req)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("PUT standin: %v", err)
+	}
 	defer resp.Body.Close()
 
 	var got struct {
@@ -536,7 +599,10 @@ func TestStandInQueuesSubmissions(t *testing.T) {
 	time.Sleep(200 * time.Millisecond)
 
 	// Check submission is still at initial status
-	resp, _ := http.Get(srv.URL + "/v1/transaction/payments/p1/submissions/s1")
+	resp, err := http.Get(srv.URL + "/v1/transaction/payments/p1/submissions/s1")
+	if err != nil {
+		t.Fatalf("GET submission: %v", err)
+	}
 	defer resp.Body.Close()
 	var got jsonapi.DataEnvelope[models.PaymentSubmission]
 	json.NewDecoder(resp.Body).Decode(&got)
@@ -545,7 +611,10 @@ func TestStandInQueuesSubmissions(t *testing.T) {
 	}
 
 	// Check queue length is 1
-	resp2, _ := http.Get(srv.URL + "/admin/standin")
+	resp2, err := http.Get(srv.URL + "/admin/standin")
+	if err != nil {
+		t.Fatalf("GET standin: %v", err)
+	}
 	defer resp2.Body.Close()
 	var state struct {
 		QueueLength int `json:"queue_length"`
@@ -564,7 +633,10 @@ func TestStandInQueuesSubmissions(t *testing.T) {
 	// Wait for lifecycle to complete
 	time.Sleep(200 * time.Millisecond)
 
-	resp3, _ := http.Get(srv.URL + "/v1/transaction/payments/p1/submissions/s1")
+	resp3, err := http.Get(srv.URL + "/v1/transaction/payments/p1/submissions/s1")
+	if err != nil {
+		t.Fatalf("GET submission after drain: %v", err)
+	}
 	defer resp3.Body.Close()
 	var final jsonapi.DataEnvelope[models.PaymentSubmission]
 	json.NewDecoder(resp3.Body).Decode(&final)
@@ -588,7 +660,10 @@ func TestSubmissionSchemeTransactionID(t *testing.T) {
 	// Create submission — should get auto scheme_transaction_id
 	sub := models.PaymentSubmission{Resource: models.Resource{ID: "s-stid"}}
 	body, _ = json.Marshal(jsonapi.DataEnvelope[models.PaymentSubmission]{Data: sub})
-	resp, _ := http.Post(srv.URL+"/v1/transaction/payments/p-stid/submissions", jsonapi.ContentType, bytes.NewReader(body))
+	resp, err := http.Post(srv.URL+"/v1/transaction/payments/p-stid/submissions", jsonapi.ContentType, bytes.NewReader(body))
+	if err != nil {
+		t.Fatalf("POST submission: %v", err)
+	}
 	defer resp.Body.Close()
 
 	var created jsonapi.DataEnvelope[models.PaymentSubmission]
@@ -601,7 +676,10 @@ func TestSubmissionSchemeTransactionID(t *testing.T) {
 	// Create admission — should also get auto scheme_transaction_id
 	adm := models.PaymentAdmission{Resource: models.Resource{ID: "a-stid"}}
 	body, _ = json.Marshal(jsonapi.DataEnvelope[models.PaymentAdmission]{Data: adm})
-	resp2, _ := http.Post(srv.URL+"/v1/transaction/payments/p-stid/admissions", jsonapi.ContentType, bytes.NewReader(body))
+	resp2, err := http.Post(srv.URL+"/v1/transaction/payments/p-stid/admissions", jsonapi.ContentType, bytes.NewReader(body))
+	if err != nil {
+		t.Fatalf("POST admission: %v", err)
+	}
 	defer resp2.Body.Close()
 
 	var admCreated jsonapi.DataEnvelope[models.PaymentAdmission]

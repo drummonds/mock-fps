@@ -35,13 +35,20 @@ All endpoints are under `/v1` and follow JSON:API conventions (`application/vnd.
 - **Health** — `GET /health`
 - **Admin** — `GET/PUT /admin/standin` (stand-in mode control)
 
+## Documentation
+
+- [FPS Events Reference](docs/fps-events.md) — Complete inbound payment lifecycle, all possible outcomes, settlement cycles, stand-in, and reconciliation
+
 ## Tasks
 
 ```
 task build    # Build binary
 task run      # Build and run
+task fmt      # Format Go source
+task vet      # Run go vet
+task lint     # Run golangci-lint
 task test     # Run tests with -race
-task check    # Test + clean
+task check    # fmt + vet + test + clean
 task clean    # Remove build artifacts
 ```
 
@@ -49,10 +56,8 @@ task clean    # Remove build artifacts
 
 | | |
 |---|---|
-| Documentation | https://h3-mock-fps.statichost.page/ |
 | Source (Codeberg) | https://codeberg.org/hum3/mock-fps |
 | Mirror (GitHub) | https://github.com/drummonds/mock-fps |
-| Docs repo | https://codeberg.org/hum3/mock-fps-docs |
 
 ## License
 

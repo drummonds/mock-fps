@@ -2,16 +2,16 @@ package models
 
 // Payment submission statuses - the lifecycle chain.
 const (
-	StatusAccepted           = "accepted"
-	StatusValidationPending  = "validation_pending"
-	StatusLimitCheckPending  = "limit_check_pending"
-	StatusLimitCheckPassed   = "limit_check_passed"
-	StatusReleasedToGateway  = "released_to_gateway"
-	StatusQueuedForDelivery  = "queued_for_delivery"
-	StatusSubmitted          = "submitted"
-	StatusDeliveryConfirmed  = "delivery_confirmed"
-	StatusDeliveryFailed     = "delivery_failed"
-	StatusFailed             = "failed"
+	StatusAccepted          = "accepted"
+	StatusValidationPending = "validation_pending"
+	StatusLimitCheckPending = "limit_check_pending"
+	StatusLimitCheckPassed  = "limit_check_passed"
+	StatusReleasedToGateway = "released_to_gateway"
+	StatusQueuedForDelivery = "queued_for_delivery"
+	StatusSubmitted         = "submitted"
+	StatusDeliveryConfirmed = "delivery_confirmed"
+	StatusDeliveryFailed    = "delivery_failed"
+	StatusFailed            = "failed"
 
 	// Admission statuses.
 	StatusPending   = "pending"
@@ -40,6 +40,6 @@ const (
 
 // Event types for webhook notifications.
 const (
-	EventCreated  = "created"
-	EventUpdated  = "updated"
+	EventCreated = "created"
+	EventUpdated = "updated"
 )

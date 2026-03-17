@@ -51,9 +51,9 @@ func NewMemoryStore() *MemoryStore {
 	}
 }
 
-func key2(a, b string) string         { return a + ":" + b }
-func key3(a, b, c string) string      { return a + ":" + b + ":" + c }
-func key4(a, b, c, d string) string   { return a + ":" + b + ":" + c + ":" + d }
+func key2(a, b string) string       { return a + ":" + b }
+func key3(a, b, c string) string    { return a + ":" + b + ":" + c }
+func key4(a, b, c, d string) string { return a + ":" + b + ":" + c + ":" + d }
 
 // --- Payments ---
 

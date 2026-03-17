@@ -4,11 +4,11 @@ import "time"
 
 // Notification is the payload sent to webhook subscribers.
 type Notification struct {
-	ID             string    `json:"id"`
-	OrganisationID string    `json:"organisation_id"`
-	Type           string    `json:"type"`
-	Version        int       `json:"version"`
-	CreatedOn      time.Time `json:"created_on"`
+	ID             string           `json:"id"`
+	OrganisationID string           `json:"organisation_id"`
+	Type           string           `json:"type"`
+	Version        int              `json:"version"`
+	CreatedOn      time.Time        `json:"created_on"`
 	Data           NotificationData `json:"data"`
 }
 

@@ -145,10 +145,10 @@ func TestLoadTest(t *testing.T) {
 	)
 
 	var (
-		ops      atomic.Int64
-		errors   atomic.Int64
-		totalNs  atomic.Int64
-		maxNs    atomic.Int64
+		ops     atomic.Int64
+		errors  atomic.Int64
+		totalNs atomic.Int64
+		maxNs   atomic.Int64
 	)
 
 	updateMax := func(val int64) {

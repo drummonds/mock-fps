@@ -26,10 +26,10 @@ type ChargesInformation struct {
 
 // FxInfo holds foreign exchange information.
 type FxInfo struct {
-	ContractReference string  `json:"contract_reference,omitempty"`
-	ExchangeRate      string  `json:"exchange_rate,omitempty"`
-	OriginalAmount    string  `json:"original_amount,omitempty"`
-	OriginalCurrency  string  `json:"original_currency,omitempty"`
+	ContractReference string `json:"contract_reference,omitempty"`
+	ExchangeRate      string `json:"exchange_rate,omitempty"`
+	OriginalAmount    string `json:"original_amount,omitempty"`
+	OriginalCurrency  string `json:"original_currency,omitempty"`
 }
 
 // RelationshipData is a JSON:API relationship link.

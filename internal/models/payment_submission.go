@@ -8,8 +8,8 @@ type PaymentSubmission struct {
 
 // PaymentSubmissionAttributes holds submission data.
 type PaymentSubmissionAttributes struct {
-	Status               string `json:"status"`
-	SubmissionDate       string `json:"submission_date,omitempty"`
-	SchemeStatusCode     string `json:"scheme_status_code,omitempty"`
-	SchemeTransactionID  string `json:"scheme_transaction_id,omitempty"`
+	Status              string `json:"status"`
+	SubmissionDate      string `json:"submission_date,omitempty"`
+	SchemeStatusCode    string `json:"scheme_status_code,omitempty"`
+	SchemeTransactionID string `json:"scheme_transaction_id,omitempty"`
 }
