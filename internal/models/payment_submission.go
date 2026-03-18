@@ -12,4 +12,6 @@ type PaymentSubmissionAttributes struct {
 	SubmissionDate      string `json:"submission_date,omitempty"`
 	SchemeStatusCode    string `json:"scheme_status_code,omitempty"`
 	SchemeTransactionID string `json:"scheme_transaction_id,omitempty"`
+	SettlementCycle     int    `json:"settlement_cycle,omitempty"`
+	SettlementDate      string `json:"settlement_date,omitempty"`
 }

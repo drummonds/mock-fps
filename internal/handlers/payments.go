@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -89,8 +90,103 @@ func (h *PaymentHandler) Get(w http.ResponseWriter, r *http.Request) {
 
 func (h *PaymentHandler) List(w http.ResponseWriter, r *http.Request) {
 	payments := h.store.ListPayments()
+
+	// Parse filter params
+	q := r.URL.Query()
+	subCycle := q.Get("filter[submission.settlement_cycle]")
+	subDate := q.Get("filter[submission.settlement_date]")
+	admCycle := q.Get("filter[admission.settlement_cycle]")
+	admDate := q.Get("filter[admission.settlement_date]")
+
+	hasFilter := subCycle != "" || subDate != "" || admCycle != "" || admDate != ""
+
+	if hasFilter {
+		var filtered []models.Payment
+		for _, p := range payments {
+			if h.matchesFilters(p.ID, subCycle, subDate, admCycle, admDate) {
+				filtered = append(filtered, p)
+			}
+		}
+		payments = filtered
+	}
+
+	// Pagination
+	pageSize := 100
+	pageNum := 1
+	if v := q.Get("page[size]"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			pageSize = n
+		}
+	}
+	if v := q.Get("page[number]"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			pageNum = n
+		}
+	}
+
+	start := (pageNum - 1) * pageSize
+	if start >= len(payments) {
+		payments = nil
+	} else {
+		end := start + pageSize
+		if end > len(payments) {
+			end = len(payments)
+		}
+		payments = payments[start:end]
+	}
+
+	if payments == nil {
+		payments = []models.Payment{}
+	}
+
 	w.Header().Set("Content-Type", jsonapi.ContentType)
 	json.NewEncoder(w).Encode(jsonapi.ListEnvelope[models.Payment]{Data: payments})
+}
+
+func (h *PaymentHandler) matchesFilters(paymentID, subCycle, subDate, admCycle, admDate string) bool {
+	if subCycle != "" || subDate != "" {
+		subs := h.store.ListPaymentSubmissions(paymentID)
+		if !matchSubmissions(subs, subCycle, subDate) {
+			return false
+		}
+	}
+	if admCycle != "" || admDate != "" {
+		adms := h.store.ListPaymentAdmissions(paymentID)
+		if !matchAdmissions(adms, admCycle, admDate) {
+			return false
+		}
+	}
+	return true
+}
+
+func matchSubmissions(subs []models.PaymentSubmission, cycle, date string) bool {
+	for _, s := range subs {
+		if cycle != "" {
+			if n, err := strconv.Atoi(cycle); err != nil || s.Attributes.SettlementCycle != n {
+				continue
+			}
+		}
+		if date != "" && s.Attributes.SettlementDate != date {
+			continue
+		}
+		return true
+	}
+	return false
+}
+
+func matchAdmissions(adms []models.PaymentAdmission, cycle, date string) bool {
+	for _, a := range adms {
+		if cycle != "" {
+			if n, err := strconv.Atoi(cycle); err != nil || a.Attributes.SettlementCycle != n {
+				continue
+			}
+		}
+		if date != "" && a.Attributes.SettlementDate != date {
+			continue
+		}
+		return true
+	}
+	return false
 }
 
 func (h *PaymentHandler) buildRelationships(paymentID string) *models.PaymentRelationships {

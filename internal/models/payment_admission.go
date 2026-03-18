@@ -11,6 +11,8 @@ type PaymentAdmissionAttributes struct {
 	Status              string `json:"status"`
 	AdmissionDate       string `json:"admission_date,omitempty"`
 	SchemeTransactionID string `json:"scheme_transaction_id,omitempty"`
+	SettlementCycle     int    `json:"settlement_cycle,omitempty"`
+	SettlementDate      string `json:"settlement_date,omitempty"`
 }
 
 // AdmissionTask represents a task on an admission.

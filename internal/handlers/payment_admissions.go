@@ -11,6 +11,7 @@ import (
 	"github.com/nibble/mock-fps/internal/jsonapi"
 	"github.com/nibble/mock-fps/internal/lifecycle"
 	"github.com/nibble/mock-fps/internal/models"
+	"github.com/nibble/mock-fps/internal/settlement"
 	"github.com/nibble/mock-fps/internal/store"
 )
 
@@ -73,6 +74,11 @@ func (h *PaymentAdmissionHandler) Create(w http.ResponseWriter, r *http.Request)
 		}
 		adm.Attributes.Status = newStatus
 		adm.ModifiedOn = time.Now().UTC()
+		if newStatus == "confirmed" {
+			cycle, date := settlement.CycleAndDate(time.Now().UTC())
+			adm.Attributes.SettlementCycle = cycle
+			adm.Attributes.SettlementDate = date
+		}
 		return h.store.UpdatePaymentAdmission(paymentID, adm)
 	})
 

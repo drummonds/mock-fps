@@ -42,6 +42,11 @@ func main() {
 		IdleTimeout:  60 * time.Second,
 	}
 
+	// Start cleanup goroutine
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go store.RunCleanup(ctx, memStore, cfg.RetentionDays)
+
 	// Graceful shutdown
 	go func() {
 		sigCh := make(chan os.Signal, 1)

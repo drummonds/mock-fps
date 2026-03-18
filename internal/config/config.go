@@ -10,6 +10,7 @@ type Config struct {
 	LifecycleStepDelayMs int
 	WebhookWorkers       int
 	WebhookBufferSize    int
+	RetentionDays        int
 }
 
 func Load() Config {
@@ -18,6 +19,7 @@ func Load() Config {
 		LifecycleStepDelayMs: envIntOrDefault("LIFECYCLE_STEP_DELAY_MS", 500),
 		WebhookWorkers:       envIntOrDefault("WEBHOOK_WORKERS", 4),
 		WebhookBufferSize:    envIntOrDefault("WEBHOOK_BUFFER_SIZE", 1000),
+		RetentionDays:        envIntOrDefault("RETENTION_DAYS", 3),
 	}
 }
 

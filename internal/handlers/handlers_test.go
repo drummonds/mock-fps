@@ -3,6 +3,7 @@ package handlers_test
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
@@ -642,6 +643,212 @@ func TestStandInQueuesSubmissions(t *testing.T) {
 	json.NewDecoder(resp3.Body).Decode(&final)
 	if final.Data.Attributes.Status != "delivery_confirmed" {
 		t.Errorf("expected delivery_confirmed after drain, got %s", final.Data.Attributes.Status)
+	}
+}
+
+func TestPaymentSubmissionSettlement(t *testing.T) {
+	srv := setupServer()
+	defer srv.Close()
+
+	// Create payment
+	payment := models.Payment{
+		Resource:   models.Resource{ID: "p-settle"},
+		Attributes: models.PaymentAttributes{Amount: "100.00", Currency: "GBP"},
+	}
+	body, _ := json.Marshal(jsonapi.DataEnvelope[models.Payment]{Data: payment})
+	http.Post(srv.URL+"/v1/transaction/payments", jsonapi.ContentType, bytes.NewReader(body))
+
+	// Create submission
+	sub := models.PaymentSubmission{Resource: models.Resource{ID: "s-settle"}}
+	body, _ = json.Marshal(jsonapi.DataEnvelope[models.PaymentSubmission]{Data: sub})
+	http.Post(srv.URL+"/v1/transaction/payments/p-settle/submissions", jsonapi.ContentType, bytes.NewReader(body))
+
+	// Wait for lifecycle to complete
+	time.Sleep(200 * time.Millisecond)
+
+	resp, err := http.Get(srv.URL + "/v1/transaction/payments/p-settle/submissions/s-settle")
+	if err != nil {
+		t.Fatalf("GET submission: %v", err)
+	}
+	defer resp.Body.Close()
+
+	var got jsonapi.DataEnvelope[models.PaymentSubmission]
+	json.NewDecoder(resp.Body).Decode(&got)
+
+	if got.Data.Attributes.SettlementCycle == 0 {
+		t.Error("expected settlement_cycle to be set")
+	}
+	if got.Data.Attributes.SettlementDate == "" {
+		t.Error("expected settlement_date to be set")
+	}
+	if matched, _ := regexp.MatchString(`^\d{4}-\d{2}-\d{2}$`, got.Data.Attributes.SettlementDate); !matched {
+		t.Errorf("settlement_date = %q, want YYYY-MM-DD", got.Data.Attributes.SettlementDate)
+	}
+}
+
+func TestPaymentAdmissionSettlement(t *testing.T) {
+	srv := setupServer()
+	defer srv.Close()
+
+	// Create payment
+	payment := models.Payment{
+		Resource:   models.Resource{ID: "p-admsettle"},
+		Attributes: models.PaymentAttributes{Amount: "100.00", Currency: "GBP"},
+	}
+	body, _ := json.Marshal(jsonapi.DataEnvelope[models.Payment]{Data: payment})
+	http.Post(srv.URL+"/v1/transaction/payments", jsonapi.ContentType, bytes.NewReader(body))
+
+	// Create admission
+	adm := models.PaymentAdmission{Resource: models.Resource{ID: "a-admsettle"}}
+	body, _ = json.Marshal(jsonapi.DataEnvelope[models.PaymentAdmission]{Data: adm})
+	http.Post(srv.URL+"/v1/transaction/payments/p-admsettle/admissions", jsonapi.ContentType, bytes.NewReader(body))
+
+	// Wait for lifecycle to complete
+	time.Sleep(200 * time.Millisecond)
+
+	resp, err := http.Get(srv.URL + "/v1/transaction/payments/p-admsettle/admissions/a-admsettle")
+	if err != nil {
+		t.Fatalf("GET admission: %v", err)
+	}
+	defer resp.Body.Close()
+
+	var got jsonapi.DataEnvelope[models.PaymentAdmission]
+	json.NewDecoder(resp.Body).Decode(&got)
+
+	if got.Data.Attributes.SettlementCycle == 0 {
+		t.Error("expected settlement_cycle to be set")
+	}
+	if got.Data.Attributes.SettlementDate == "" {
+		t.Error("expected settlement_date to be set")
+	}
+}
+
+func TestListPaymentsFiltering(t *testing.T) {
+	s := store.NewMemoryStore()
+	engine := lifecycle.NewEngine(10, nil)
+	mux := http.NewServeMux()
+	handlers.RegisterRoutes(mux, s, engine)
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	// Create 2 payments with submissions
+	for _, id := range []string{"fp1", "fp2"} {
+		p := models.Payment{
+			Resource:   models.Resource{ID: id},
+			Attributes: models.PaymentAttributes{Amount: "50.00", Currency: "GBP"},
+		}
+		body, _ := json.Marshal(jsonapi.DataEnvelope[models.Payment]{Data: p})
+		http.Post(srv.URL+"/v1/transaction/payments", jsonapi.ContentType, bytes.NewReader(body))
+
+		sub := models.PaymentSubmission{Resource: models.Resource{ID: id + "-sub"}}
+		body, _ = json.Marshal(jsonapi.DataEnvelope[models.PaymentSubmission]{Data: sub})
+		http.Post(srv.URL+"/v1/transaction/payments/"+id+"/submissions", jsonapi.ContentType, bytes.NewReader(body))
+	}
+
+	// Wait for lifecycle to complete
+	time.Sleep(200 * time.Millisecond)
+
+	// Get the settlement cycle/date from one submission to use as filter
+	resp, err := http.Get(srv.URL + "/v1/transaction/payments/fp1/submissions/fp1-sub")
+	if err != nil {
+		t.Fatalf("GET submission: %v", err)
+	}
+	defer resp.Body.Close()
+	var sub jsonapi.DataEnvelope[models.PaymentSubmission]
+	json.NewDecoder(resp.Body).Decode(&sub)
+
+	cycle := sub.Data.Attributes.SettlementCycle
+	date := sub.Data.Attributes.SettlementDate
+
+	// Filter by cycle — should return both payments (same cycle)
+	url := fmt.Sprintf("%s/v1/transaction/payments?filter[submission.settlement_cycle]=%d", srv.URL, cycle)
+	resp2, err := http.Get(url)
+	if err != nil {
+		t.Fatalf("GET filtered: %v", err)
+	}
+	defer resp2.Body.Close()
+	var list jsonapi.ListEnvelope[models.Payment]
+	json.NewDecoder(resp2.Body).Decode(&list)
+	if len(list.Data) != 2 {
+		t.Errorf("expected 2 payments for cycle %d, got %d", cycle, len(list.Data))
+	}
+
+	// Filter by date
+	url = fmt.Sprintf("%s/v1/transaction/payments?filter[submission.settlement_date]=%s", srv.URL, date)
+	resp3, err := http.Get(url)
+	if err != nil {
+		t.Fatalf("GET filtered by date: %v", err)
+	}
+	defer resp3.Body.Close()
+	var list2 jsonapi.ListEnvelope[models.Payment]
+	json.NewDecoder(resp3.Body).Decode(&list2)
+	if len(list2.Data) != 2 {
+		t.Errorf("expected 2 payments for date %s, got %d", date, len(list2.Data))
+	}
+
+	// Filter by non-matching cycle
+	url = fmt.Sprintf("%s/v1/transaction/payments?filter[submission.settlement_cycle]=99", srv.URL)
+	resp4, err := http.Get(url)
+	if err != nil {
+		t.Fatalf("GET filtered no match: %v", err)
+	}
+	defer resp4.Body.Close()
+	var list3 jsonapi.ListEnvelope[models.Payment]
+	json.NewDecoder(resp4.Body).Decode(&list3)
+	if len(list3.Data) != 0 {
+		t.Errorf("expected 0 payments for cycle 99, got %d", len(list3.Data))
+	}
+}
+
+func TestListPaymentsPagination(t *testing.T) {
+	srv := setupServer()
+	defer srv.Close()
+
+	// Create 5 payments
+	for i := 0; i < 5; i++ {
+		id := fmt.Sprintf("page-p%d", i)
+		p := models.Payment{
+			Resource:   models.Resource{ID: id},
+			Attributes: models.PaymentAttributes{Amount: "10.00", Currency: "GBP"},
+		}
+		body, _ := json.Marshal(jsonapi.DataEnvelope[models.Payment]{Data: p})
+		http.Post(srv.URL+"/v1/transaction/payments", jsonapi.ContentType, bytes.NewReader(body))
+	}
+
+	// Page size 2, page 1
+	resp, err := http.Get(srv.URL + "/v1/transaction/payments?page[size]=2&page[number]=1")
+	if err != nil {
+		t.Fatalf("GET page 1: %v", err)
+	}
+	defer resp.Body.Close()
+	var list jsonapi.ListEnvelope[models.Payment]
+	json.NewDecoder(resp.Body).Decode(&list)
+	if len(list.Data) != 2 {
+		t.Errorf("page 1: expected 2, got %d", len(list.Data))
+	}
+
+	// Page size 2, page 3 (should have 1 item)
+	resp2, err := http.Get(srv.URL + "/v1/transaction/payments?page[size]=2&page[number]=3")
+	if err != nil {
+		t.Fatalf("GET page 3: %v", err)
+	}
+	defer resp2.Body.Close()
+	var list2 jsonapi.ListEnvelope[models.Payment]
+	json.NewDecoder(resp2.Body).Decode(&list2)
+	if len(list2.Data) != 1 {
+		t.Errorf("page 3: expected 1, got %d", len(list2.Data))
+	}
+
+	// Page beyond range
+	resp3, err := http.Get(srv.URL + "/v1/transaction/payments?page[size]=2&page[number]=10")
+	if err != nil {
+		t.Fatalf("GET page 10: %v", err)
+	}
+	defer resp3.Body.Close()
+	var list3 jsonapi.ListEnvelope[models.Payment]
+	json.NewDecoder(resp3.Body).Decode(&list3)
+	if len(list3.Data) != 0 {
+		t.Errorf("page 10: expected 0, got %d", len(list3.Data))
 	}
 }
 

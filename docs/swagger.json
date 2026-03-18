@@ -1,0 +1,1716 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Mock FPS API",
+    "description": "Mock server simulating the Form3 Faster Payments Service (FPS) API. Returns realistic JSON:API responses with async lifecycle status transitions, stand-in mode, and webhook notifications.",
+    "version": "0.1.2",
+    "contact": {
+      "name": "hum3",
+      "url": "https://codeberg.org/hum3/mock-fps"
+    },
+    "license": {
+      "name": "MIT"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080"
+    }
+  ],
+  "tags": [
+    { "name": "Payments", "description": "Payment resources" },
+    { "name": "Payment Submissions", "description": "Payment submission lifecycle" },
+    { "name": "Payment Admissions", "description": "Payment admission lifecycle" },
+    { "name": "Admission Tasks", "description": "Tasks on payment admissions" },
+    { "name": "Returns", "description": "Payment return resources" },
+    { "name": "Return Submissions", "description": "Return submission lifecycle" },
+    { "name": "Recalls", "description": "Payment recall resources" },
+    { "name": "Recall Submissions", "description": "Recall submission lifecycle" },
+    { "name": "Recall Decisions", "description": "Recall decision resources" },
+    { "name": "Recall Decision Submissions", "description": "Recall decision submission lifecycle" },
+    { "name": "Reversals", "description": "Payment reversal resources" },
+    { "name": "Reversal Submissions", "description": "Reversal submission lifecycle" },
+    { "name": "Subscriptions", "description": "Webhook subscription management" },
+    { "name": "Admin", "description": "Health check and stand-in mode" }
+  ],
+  "paths": {
+    "/v1/transaction/payments": {
+      "post": {
+        "tags": ["Payments"],
+        "summary": "Create payment",
+        "operationId": "createPayment",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/vnd.api+json": {
+              "schema": {
+                "$ref": "#/components/schemas/PaymentDataEnvelope"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Payment created",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentDataEnvelope"
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "415": { "$ref": "#/components/responses/UnsupportedMediaType" }
+        }
+      },
+      "get": {
+        "tags": ["Payments"],
+        "summary": "List payments",
+        "operationId": "listPayments",
+        "parameters": [
+          {
+            "name": "filter[submission.settlement_cycle]",
+            "in": "query",
+            "schema": { "type": "integer" }
+          },
+          {
+            "name": "filter[submission.settlement_date]",
+            "in": "query",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "filter[admission.settlement_cycle]",
+            "in": "query",
+            "schema": { "type": "integer" }
+          },
+          {
+            "name": "filter[admission.settlement_date]",
+            "in": "query",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "page[size]",
+            "in": "query",
+            "schema": { "type": "integer", "default": 100 }
+          },
+          {
+            "name": "page[number]",
+            "in": "query",
+            "schema": { "type": "integer", "default": 1 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of payments",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentListEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/transaction/payments/{paymentID}": {
+      "get": {
+        "tags": ["Payments"],
+        "summary": "Get payment",
+        "operationId": "getPayment",
+        "parameters": [
+          { "$ref": "#/components/parameters/paymentID" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Payment found",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentDataEnvelope"
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/v1/transaction/payments/{paymentID}/submissions": {
+      "post": {
+        "tags": ["Payment Submissions"],
+        "summary": "Create submission",
+        "description": "Creates a payment submission and triggers async lifecycle: accepted -> validation_pending -> limit_check_pending -> limit_check_passed -> released_to_gateway -> queued_for_delivery -> submitted -> delivery_confirmed",
+        "operationId": "createPaymentSubmission",
+        "parameters": [
+          { "$ref": "#/components/parameters/paymentID" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/vnd.api+json": {
+              "schema": {
+                "$ref": "#/components/schemas/PaymentSubmissionDataEnvelope"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Submission created",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentSubmissionDataEnvelope"
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" },
+          "415": { "$ref": "#/components/responses/UnsupportedMediaType" }
+        }
+      }
+    },
+    "/v1/transaction/payments/{paymentID}/submissions/{submissionID}": {
+      "get": {
+        "tags": ["Payment Submissions"],
+        "summary": "Get submission",
+        "operationId": "getPaymentSubmission",
+        "parameters": [
+          { "$ref": "#/components/parameters/paymentID" },
+          { "$ref": "#/components/parameters/submissionID" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Submission found",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentSubmissionDataEnvelope"
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/v1/transaction/payments/{paymentID}/admissions": {
+      "post": {
+        "tags": ["Payment Admissions"],
+        "summary": "Create admission",
+        "description": "Creates a payment admission and triggers async lifecycle: pending -> confirmed",
+        "operationId": "createPaymentAdmission",
+        "parameters": [
+          { "$ref": "#/components/parameters/paymentID" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/vnd.api+json": {
+              "schema": {
+                "$ref": "#/components/schemas/PaymentAdmissionDataEnvelope"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Admission created",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentAdmissionDataEnvelope"
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" },
+          "415": { "$ref": "#/components/responses/UnsupportedMediaType" }
+        }
+      }
+    },
+    "/v1/transaction/payments/{paymentID}/admissions/{admissionID}": {
+      "get": {
+        "tags": ["Payment Admissions"],
+        "summary": "Get admission",
+        "operationId": "getPaymentAdmission",
+        "parameters": [
+          { "$ref": "#/components/parameters/paymentID" },
+          { "$ref": "#/components/parameters/admissionID" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Admission found",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentAdmissionDataEnvelope"
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/v1/transaction/payments/{paymentID}/admissions/{admissionID}/tasks/{taskID}": {
+      "patch": {
+        "tags": ["Admission Tasks"],
+        "summary": "Update admission task",
+        "operationId": "updateAdmissionTask",
+        "parameters": [
+          { "$ref": "#/components/parameters/paymentID" },
+          { "$ref": "#/components/parameters/admissionID" },
+          { "$ref": "#/components/parameters/taskID" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/vnd.api+json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdmissionTaskDataEnvelope"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Task updated",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdmissionTaskDataEnvelope"
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "415": { "$ref": "#/components/responses/UnsupportedMediaType" }
+        }
+      }
+    },
+    "/v1/transaction/payments/{paymentID}/returns": {
+      "post": {
+        "tags": ["Returns"],
+        "summary": "Create return",
+        "operationId": "createReturn",
+        "parameters": [
+          { "$ref": "#/components/parameters/paymentID" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/vnd.api+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReturnPaymentDataEnvelope"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Return created",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReturnPaymentDataEnvelope"
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "415": { "$ref": "#/components/responses/UnsupportedMediaType" }
+        }
+      },
+      "get": {
+        "tags": ["Returns"],
+        "summary": "List returns",
+        "operationId": "listReturns",
+        "parameters": [
+          { "$ref": "#/components/parameters/paymentID" }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of returns",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReturnPaymentListEnvelope"
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/v1/transaction/payments/{paymentID}/returns/{returnID}": {
+      "get": {
+        "tags": ["Returns"],
+        "summary": "Get return",
+        "operationId": "getReturn",
+        "parameters": [
+          { "$ref": "#/components/parameters/paymentID" },
+          { "$ref": "#/components/parameters/returnID" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Return found",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReturnPaymentDataEnvelope"
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/v1/transaction/payments/{paymentID}/returns/{returnID}/submissions": {
+      "post": {
+        "tags": ["Return Submissions"],
+        "summary": "Create return submission",
+        "description": "Creates a return submission and triggers async lifecycle: accepted -> delivery_confirmed",
+        "operationId": "createReturnSubmission",
+        "parameters": [
+          { "$ref": "#/components/parameters/paymentID" },
+          { "$ref": "#/components/parameters/returnID" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/vnd.api+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReturnSubmissionDataEnvelope"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Return submission created",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReturnSubmissionDataEnvelope"
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" },
+          "415": { "$ref": "#/components/responses/UnsupportedMediaType" }
+        }
+      }
+    },
+    "/v1/transaction/payments/{paymentID}/returns/{returnID}/submissions/{submissionID}": {
+      "get": {
+        "tags": ["Return Submissions"],
+        "summary": "Get return submission",
+        "operationId": "getReturnSubmission",
+        "parameters": [
+          { "$ref": "#/components/parameters/paymentID" },
+          { "$ref": "#/components/parameters/returnID" },
+          { "$ref": "#/components/parameters/submissionID" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Return submission found",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReturnSubmissionDataEnvelope"
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/v1/transaction/payments/{paymentID}/recalls": {
+      "post": {
+        "tags": ["Recalls"],
+        "summary": "Create recall",
+        "operationId": "createRecall",
+        "parameters": [
+          { "$ref": "#/components/parameters/paymentID" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/vnd.api+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecallDataEnvelope"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Recall created",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecallDataEnvelope"
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "415": { "$ref": "#/components/responses/UnsupportedMediaType" }
+        }
+      },
+      "get": {
+        "tags": ["Recalls"],
+        "summary": "List recalls",
+        "operationId": "listRecalls",
+        "parameters": [
+          { "$ref": "#/components/parameters/paymentID" }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of recalls",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecallListEnvelope"
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/v1/transaction/payments/{paymentID}/recalls/{recallID}": {
+      "get": {
+        "tags": ["Recalls"],
+        "summary": "Get recall",
+        "operationId": "getRecall",
+        "parameters": [
+          { "$ref": "#/components/parameters/paymentID" },
+          { "$ref": "#/components/parameters/recallID" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Recall found",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecallDataEnvelope"
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/v1/transaction/payments/{paymentID}/recalls/{recallID}/submissions": {
+      "post": {
+        "tags": ["Recall Submissions"],
+        "summary": "Create recall submission",
+        "description": "Creates a recall submission and triggers async lifecycle: accepted -> delivery_confirmed",
+        "operationId": "createRecallSubmission",
+        "parameters": [
+          { "$ref": "#/components/parameters/paymentID" },
+          { "$ref": "#/components/parameters/recallID" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/vnd.api+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecallSubmissionDataEnvelope"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Recall submission created",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecallSubmissionDataEnvelope"
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" },
+          "415": { "$ref": "#/components/responses/UnsupportedMediaType" }
+        }
+      }
+    },
+    "/v1/transaction/payments/{paymentID}/recalls/{recallID}/submissions/{submissionID}": {
+      "get": {
+        "tags": ["Recall Submissions"],
+        "summary": "Get recall submission",
+        "operationId": "getRecallSubmission",
+        "parameters": [
+          { "$ref": "#/components/parameters/paymentID" },
+          { "$ref": "#/components/parameters/recallID" },
+          { "$ref": "#/components/parameters/submissionID" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Recall submission found",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecallSubmissionDataEnvelope"
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/v1/transaction/payments/{paymentID}/recalls/{recallID}/decisions": {
+      "post": {
+        "tags": ["Recall Decisions"],
+        "summary": "Create recall decision",
+        "operationId": "createRecallDecision",
+        "parameters": [
+          { "$ref": "#/components/parameters/paymentID" },
+          { "$ref": "#/components/parameters/recallID" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/vnd.api+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecallDecisionDataEnvelope"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Recall decision created",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecallDecisionDataEnvelope"
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "415": { "$ref": "#/components/responses/UnsupportedMediaType" }
+        }
+      },
+      "get": {
+        "tags": ["Recall Decisions"],
+        "summary": "List recall decisions",
+        "operationId": "listRecallDecisions",
+        "parameters": [
+          { "$ref": "#/components/parameters/paymentID" },
+          { "$ref": "#/components/parameters/recallID" }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of recall decisions",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecallDecisionListEnvelope"
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/v1/transaction/payments/{paymentID}/recalls/{recallID}/decisions/{decisionID}": {
+      "get": {
+        "tags": ["Recall Decisions"],
+        "summary": "Get recall decision",
+        "operationId": "getRecallDecision",
+        "parameters": [
+          { "$ref": "#/components/parameters/paymentID" },
+          { "$ref": "#/components/parameters/recallID" },
+          { "$ref": "#/components/parameters/decisionID" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Recall decision found",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecallDecisionDataEnvelope"
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/v1/transaction/payments/{paymentID}/recalls/{recallID}/decisions/{decisionID}/submissions": {
+      "post": {
+        "tags": ["Recall Decision Submissions"],
+        "summary": "Create recall decision submission",
+        "description": "Creates a recall decision submission and triggers async lifecycle: accepted -> delivery_confirmed",
+        "operationId": "createRecallDecisionSubmission",
+        "parameters": [
+          { "$ref": "#/components/parameters/paymentID" },
+          { "$ref": "#/components/parameters/recallID" },
+          { "$ref": "#/components/parameters/decisionID" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/vnd.api+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecallDecisionSubmissionDataEnvelope"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Recall decision submission created",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecallDecisionSubmissionDataEnvelope"
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" },
+          "415": { "$ref": "#/components/responses/UnsupportedMediaType" }
+        }
+      }
+    },
+    "/v1/transaction/payments/{paymentID}/recalls/{recallID}/decisions/{decisionID}/submissions/{submissionID}": {
+      "get": {
+        "tags": ["Recall Decision Submissions"],
+        "summary": "Get recall decision submission",
+        "operationId": "getRecallDecisionSubmission",
+        "parameters": [
+          { "$ref": "#/components/parameters/paymentID" },
+          { "$ref": "#/components/parameters/recallID" },
+          { "$ref": "#/components/parameters/decisionID" },
+          { "$ref": "#/components/parameters/submissionID" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Recall decision submission found",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecallDecisionSubmissionDataEnvelope"
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/v1/transaction/payments/{paymentID}/reversals": {
+      "post": {
+        "tags": ["Reversals"],
+        "summary": "Create reversal",
+        "operationId": "createReversal",
+        "parameters": [
+          { "$ref": "#/components/parameters/paymentID" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/vnd.api+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReversalDataEnvelope"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Reversal created",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReversalDataEnvelope"
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "415": { "$ref": "#/components/responses/UnsupportedMediaType" }
+        }
+      },
+      "get": {
+        "tags": ["Reversals"],
+        "summary": "List reversals",
+        "operationId": "listReversals",
+        "parameters": [
+          { "$ref": "#/components/parameters/paymentID" }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of reversals",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReversalListEnvelope"
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/v1/transaction/payments/{paymentID}/reversals/{reversalID}": {
+      "get": {
+        "tags": ["Reversals"],
+        "summary": "Get reversal",
+        "operationId": "getReversal",
+        "parameters": [
+          { "$ref": "#/components/parameters/paymentID" },
+          { "$ref": "#/components/parameters/reversalID" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reversal found",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReversalDataEnvelope"
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/v1/transaction/payments/{paymentID}/reversals/{reversalID}/submissions": {
+      "post": {
+        "tags": ["Reversal Submissions"],
+        "summary": "Create reversal submission",
+        "description": "Creates a reversal submission and triggers async lifecycle: accepted -> delivery_confirmed",
+        "operationId": "createReversalSubmission",
+        "parameters": [
+          { "$ref": "#/components/parameters/paymentID" },
+          { "$ref": "#/components/parameters/reversalID" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/vnd.api+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReversalSubmissionDataEnvelope"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Reversal submission created",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReversalSubmissionDataEnvelope"
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" },
+          "415": { "$ref": "#/components/responses/UnsupportedMediaType" }
+        }
+      }
+    },
+    "/v1/transaction/payments/{paymentID}/reversals/{reversalID}/submissions/{submissionID}": {
+      "get": {
+        "tags": ["Reversal Submissions"],
+        "summary": "Get reversal submission",
+        "operationId": "getReversalSubmission",
+        "parameters": [
+          { "$ref": "#/components/parameters/paymentID" },
+          { "$ref": "#/components/parameters/reversalID" },
+          { "$ref": "#/components/parameters/submissionID" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reversal submission found",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReversalSubmissionDataEnvelope"
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/v1/notification/subscriptions": {
+      "post": {
+        "tags": ["Subscriptions"],
+        "summary": "Create subscription",
+        "operationId": "createSubscription",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/vnd.api+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubscriptionDataEnvelope"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Subscription created",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionDataEnvelope"
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "415": { "$ref": "#/components/responses/UnsupportedMediaType" }
+        }
+      },
+      "get": {
+        "tags": ["Subscriptions"],
+        "summary": "List subscriptions",
+        "operationId": "listSubscriptions",
+        "responses": {
+          "200": {
+            "description": "List of subscriptions",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionListEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/notification/subscriptions/{subscriptionID}": {
+      "get": {
+        "tags": ["Subscriptions"],
+        "summary": "Get subscription",
+        "operationId": "getSubscription",
+        "parameters": [
+          { "$ref": "#/components/parameters/subscriptionID" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Subscription found",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionDataEnvelope"
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "patch": {
+        "tags": ["Subscriptions"],
+        "summary": "Update subscription",
+        "operationId": "updateSubscription",
+        "parameters": [
+          { "$ref": "#/components/parameters/subscriptionID" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/vnd.api+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubscriptionDataEnvelope"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Subscription updated",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionDataEnvelope"
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "415": { "$ref": "#/components/responses/UnsupportedMediaType" }
+        }
+      },
+      "delete": {
+        "tags": ["Subscriptions"],
+        "summary": "Delete subscription",
+        "operationId": "deleteSubscription",
+        "parameters": [
+          { "$ref": "#/components/parameters/subscriptionID" }
+        ],
+        "responses": {
+          "204": {
+            "description": "Subscription deleted"
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Health check",
+        "operationId": "healthCheck",
+        "responses": {
+          "200": {
+            "description": "Service is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/standin": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Get stand-in status",
+        "operationId": "getStandIn",
+        "responses": {
+          "200": {
+            "description": "Current stand-in status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandInStatus"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["Admin"],
+        "summary": "Toggle stand-in mode",
+        "operationId": "setStandIn",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StandInRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Stand-in mode updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandInStatus"
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "paymentID": {
+        "name": "paymentID",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string", "format": "uuid" }
+      },
+      "submissionID": {
+        "name": "submissionID",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string", "format": "uuid" }
+      },
+      "admissionID": {
+        "name": "admissionID",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string", "format": "uuid" }
+      },
+      "taskID": {
+        "name": "taskID",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string", "format": "uuid" }
+      },
+      "returnID": {
+        "name": "returnID",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string", "format": "uuid" }
+      },
+      "recallID": {
+        "name": "recallID",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string", "format": "uuid" }
+      },
+      "decisionID": {
+        "name": "decisionID",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string", "format": "uuid" }
+      },
+      "reversalID": {
+        "name": "reversalID",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string", "format": "uuid" }
+      },
+      "subscriptionID": {
+        "name": "subscriptionID",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string", "format": "uuid" }
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Bad request",
+        "content": {
+          "application/vnd.api+json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Resource not found",
+        "content": {
+          "application/vnd.api+json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+          }
+        }
+      },
+      "Conflict": {
+        "description": "Resource already exists",
+        "content": {
+          "application/vnd.api+json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+          }
+        }
+      },
+      "UnsupportedMediaType": {
+        "description": "Content-Type must be application/vnd.api+json",
+        "content": {
+          "application/vnd.api+json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "Resource": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string" },
+          "id": { "type": "string", "format": "uuid" },
+          "organisation_id": { "type": "string" },
+          "version": { "type": "integer" },
+          "created_on": { "type": "string", "format": "date-time" },
+          "modified_on": { "type": "string", "format": "date-time" }
+        },
+        "required": ["type", "id"]
+      },
+      "AccountParty": {
+        "type": "object",
+        "properties": {
+          "account_name": { "type": "string" },
+          "account_number": { "type": "string" },
+          "sort_code": { "type": "string" }
+        }
+      },
+      "ChargesInformation": {
+        "type": "object",
+        "properties": {
+          "bearer_code": { "type": "string" }
+        }
+      },
+      "FxInfo": {
+        "type": "object",
+        "properties": {
+          "contract_reference": { "type": "string" },
+          "exchange_rate": { "type": "string" },
+          "original_amount": { "type": "string" },
+          "original_currency": { "type": "string" }
+        }
+      },
+      "RelationshipData": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string" },
+          "id": { "type": "string", "format": "uuid" }
+        },
+        "required": ["type", "id"]
+      },
+      "Relationship": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/RelationshipData" }
+          }
+        }
+      },
+      "PaymentRelationships": {
+        "type": "object",
+        "properties": {
+          "payment_submissions": { "$ref": "#/components/schemas/Relationship" },
+          "payment_admissions": { "$ref": "#/components/schemas/Relationship" },
+          "payment_returns": { "$ref": "#/components/schemas/Relationship" },
+          "payment_recalls": { "$ref": "#/components/schemas/Relationship" },
+          "payment_reversals": { "$ref": "#/components/schemas/Relationship" }
+        }
+      },
+      "PaymentAttributes": {
+        "type": "object",
+        "properties": {
+          "amount": { "type": "string", "example": "100.00" },
+          "currency": { "type": "string", "example": "GBP" },
+          "end_to_end_reference": { "type": "string" },
+          "numeric_reference": { "type": "string" },
+          "payment_scheme": { "type": "string", "default": "FPS" },
+          "payment_type": { "type": "string" },
+          "processing_date": { "type": "string", "format": "date" },
+          "reference": { "type": "string" },
+          "scheme_payment_sub_type": { "type": "string" },
+          "scheme_payment_type": { "type": "string", "default": "ImmediatePayment" },
+          "beneficiary_party": { "$ref": "#/components/schemas/AccountParty" },
+          "debtor_party": { "$ref": "#/components/schemas/AccountParty" },
+          "charges_information": { "$ref": "#/components/schemas/ChargesInformation" },
+          "fx": { "$ref": "#/components/schemas/FxInfo" }
+        },
+        "required": ["amount", "currency"]
+      },
+      "PaymentResource": {
+        "allOf": [
+          { "$ref": "#/components/schemas/Resource" },
+          {
+            "type": "object",
+            "properties": {
+              "attributes": { "$ref": "#/components/schemas/PaymentAttributes" },
+              "relationships": { "$ref": "#/components/schemas/PaymentRelationships" }
+            },
+            "required": ["attributes"]
+          }
+        ]
+      },
+      "PaymentDataEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": { "$ref": "#/components/schemas/PaymentResource" }
+        },
+        "required": ["data"]
+      },
+      "PaymentListEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/PaymentResource" }
+          }
+        },
+        "required": ["data"]
+      },
+      "PaymentSubmissionAttributes": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Lifecycle: accepted -> validation_pending -> limit_check_pending -> limit_check_passed -> released_to_gateway -> queued_for_delivery -> submitted -> delivery_confirmed",
+            "enum": ["accepted", "validation_pending", "limit_check_pending", "limit_check_passed", "released_to_gateway", "queued_for_delivery", "submitted", "delivery_confirmed"]
+          },
+          "submission_date": { "type": "string", "format": "date" },
+          "scheme_status_code": { "type": "string" },
+          "scheme_transaction_id": { "type": "string" },
+          "settlement_cycle": { "type": "integer" },
+          "settlement_date": { "type": "string", "format": "date" }
+        }
+      },
+      "PaymentSubmissionResource": {
+        "allOf": [
+          { "$ref": "#/components/schemas/Resource" },
+          {
+            "type": "object",
+            "properties": {
+              "attributes": { "$ref": "#/components/schemas/PaymentSubmissionAttributes" }
+            },
+            "required": ["attributes"]
+          }
+        ]
+      },
+      "PaymentSubmissionDataEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": { "$ref": "#/components/schemas/PaymentSubmissionResource" }
+        },
+        "required": ["data"]
+      },
+      "PaymentAdmissionAttributes": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Lifecycle: pending -> confirmed",
+            "enum": ["pending", "confirmed"]
+          },
+          "admission_date": { "type": "string", "format": "date" },
+          "scheme_transaction_id": { "type": "string" },
+          "settlement_cycle": { "type": "integer" },
+          "settlement_date": { "type": "string", "format": "date" }
+        }
+      },
+      "PaymentAdmissionResource": {
+        "allOf": [
+          { "$ref": "#/components/schemas/Resource" },
+          {
+            "type": "object",
+            "properties": {
+              "attributes": { "$ref": "#/components/schemas/PaymentAdmissionAttributes" }
+            },
+            "required": ["attributes"]
+          }
+        ]
+      },
+      "PaymentAdmissionDataEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": { "$ref": "#/components/schemas/PaymentAdmissionResource" }
+        },
+        "required": ["data"]
+      },
+      "AdmissionTaskAttributes": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string" },
+          "assignee": { "type": "string" },
+          "name": { "type": "string" }
+        }
+      },
+      "AdmissionTaskResource": {
+        "allOf": [
+          { "$ref": "#/components/schemas/Resource" },
+          {
+            "type": "object",
+            "properties": {
+              "attributes": { "$ref": "#/components/schemas/AdmissionTaskAttributes" }
+            },
+            "required": ["attributes"]
+          }
+        ]
+      },
+      "AdmissionTaskDataEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": { "$ref": "#/components/schemas/AdmissionTaskResource" }
+        },
+        "required": ["data"]
+      },
+      "ReturnPaymentAttributes": {
+        "type": "object",
+        "properties": {
+          "amount": { "type": "string", "example": "100.00" },
+          "currency": { "type": "string", "example": "GBP" },
+          "return_code": { "type": "string" },
+          "return_reason": { "type": "string" },
+          "scheme_status": { "type": "string" }
+        },
+        "required": ["amount", "currency"]
+      },
+      "ReturnPaymentResource": {
+        "allOf": [
+          { "$ref": "#/components/schemas/Resource" },
+          {
+            "type": "object",
+            "properties": {
+              "attributes": { "$ref": "#/components/schemas/ReturnPaymentAttributes" }
+            },
+            "required": ["attributes"]
+          }
+        ]
+      },
+      "ReturnPaymentDataEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": { "$ref": "#/components/schemas/ReturnPaymentResource" }
+        },
+        "required": ["data"]
+      },
+      "ReturnPaymentListEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ReturnPaymentResource" }
+          }
+        },
+        "required": ["data"]
+      },
+      "ReturnSubmissionAttributes": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Lifecycle: accepted -> delivery_confirmed",
+            "enum": ["accepted", "delivery_confirmed"]
+          },
+          "submission_date": { "type": "string", "format": "date" }
+        }
+      },
+      "ReturnSubmissionResource": {
+        "allOf": [
+          { "$ref": "#/components/schemas/Resource" },
+          {
+            "type": "object",
+            "properties": {
+              "attributes": { "$ref": "#/components/schemas/ReturnSubmissionAttributes" }
+            },
+            "required": ["attributes"]
+          }
+        ]
+      },
+      "ReturnSubmissionDataEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": { "$ref": "#/components/schemas/ReturnSubmissionResource" }
+        },
+        "required": ["data"]
+      },
+      "RecallAttributes": {
+        "type": "object",
+        "properties": {
+          "amount": { "type": "string" },
+          "currency": { "type": "string" },
+          "recall_reason": { "type": "string" },
+          "recall_type": { "type": "string" },
+          "status": { "type": "string" }
+        }
+      },
+      "RecallResource": {
+        "allOf": [
+          { "$ref": "#/components/schemas/Resource" },
+          {
+            "type": "object",
+            "properties": {
+              "attributes": { "$ref": "#/components/schemas/RecallAttributes" }
+            },
+            "required": ["attributes"]
+          }
+        ]
+      },
+      "RecallDataEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": { "$ref": "#/components/schemas/RecallResource" }
+        },
+        "required": ["data"]
+      },
+      "RecallListEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/RecallResource" }
+          }
+        },
+        "required": ["data"]
+      },
+      "RecallSubmissionAttributes": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Lifecycle: accepted -> delivery_confirmed",
+            "enum": ["accepted", "delivery_confirmed"]
+          },
+          "submission_date": { "type": "string", "format": "date" }
+        }
+      },
+      "RecallSubmissionResource": {
+        "allOf": [
+          { "$ref": "#/components/schemas/Resource" },
+          {
+            "type": "object",
+            "properties": {
+              "attributes": { "$ref": "#/components/schemas/RecallSubmissionAttributes" }
+            },
+            "required": ["attributes"]
+          }
+        ]
+      },
+      "RecallSubmissionDataEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": { "$ref": "#/components/schemas/RecallSubmissionResource" }
+        },
+        "required": ["data"]
+      },
+      "RecallDecisionAttributes": {
+        "type": "object",
+        "properties": {
+          "answer": { "type": "string" },
+          "reason": { "type": "string" },
+          "status": { "type": "string" }
+        }
+      },
+      "RecallDecisionResource": {
+        "allOf": [
+          { "$ref": "#/components/schemas/Resource" },
+          {
+            "type": "object",
+            "properties": {
+              "attributes": { "$ref": "#/components/schemas/RecallDecisionAttributes" }
+            },
+            "required": ["attributes"]
+          }
+        ]
+      },
+      "RecallDecisionDataEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": { "$ref": "#/components/schemas/RecallDecisionResource" }
+        },
+        "required": ["data"]
+      },
+      "RecallDecisionListEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/RecallDecisionResource" }
+          }
+        },
+        "required": ["data"]
+      },
+      "RecallDecisionSubmissionAttributes": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Lifecycle: accepted -> delivery_confirmed",
+            "enum": ["accepted", "delivery_confirmed"]
+          },
+          "submission_date": { "type": "string", "format": "date" }
+        }
+      },
+      "RecallDecisionSubmissionResource": {
+        "allOf": [
+          { "$ref": "#/components/schemas/Resource" },
+          {
+            "type": "object",
+            "properties": {
+              "attributes": { "$ref": "#/components/schemas/RecallDecisionSubmissionAttributes" }
+            },
+            "required": ["attributes"]
+          }
+        ]
+      },
+      "RecallDecisionSubmissionDataEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": { "$ref": "#/components/schemas/RecallDecisionSubmissionResource" }
+        },
+        "required": ["data"]
+      },
+      "ReversalAttributes": {
+        "type": "object",
+        "properties": {
+          "amount": { "type": "string" },
+          "currency": { "type": "string" },
+          "reversal_reason": { "type": "string" },
+          "status": { "type": "string" }
+        }
+      },
+      "ReversalResource": {
+        "allOf": [
+          { "$ref": "#/components/schemas/Resource" },
+          {
+            "type": "object",
+            "properties": {
+              "attributes": { "$ref": "#/components/schemas/ReversalAttributes" }
+            },
+            "required": ["attributes"]
+          }
+        ]
+      },
+      "ReversalDataEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": { "$ref": "#/components/schemas/ReversalResource" }
+        },
+        "required": ["data"]
+      },
+      "ReversalListEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ReversalResource" }
+          }
+        },
+        "required": ["data"]
+      },
+      "ReversalSubmissionAttributes": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Lifecycle: accepted -> delivery_confirmed",
+            "enum": ["accepted", "delivery_confirmed"]
+          },
+          "submission_date": { "type": "string", "format": "date" }
+        }
+      },
+      "ReversalSubmissionResource": {
+        "allOf": [
+          { "$ref": "#/components/schemas/Resource" },
+          {
+            "type": "object",
+            "properties": {
+              "attributes": { "$ref": "#/components/schemas/ReversalSubmissionAttributes" }
+            },
+            "required": ["attributes"]
+          }
+        ]
+      },
+      "ReversalSubmissionDataEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": { "$ref": "#/components/schemas/ReversalSubmissionResource" }
+        },
+        "required": ["data"]
+      },
+      "SubscriptionAttributes": {
+        "type": "object",
+        "properties": {
+          "callback_uri": { "type": "string", "format": "uri" },
+          "event_type": { "type": "string" },
+          "record_type": { "type": "string" },
+          "is_active": { "type": "boolean" },
+          "callback_transport": { "type": "string" },
+          "user_id": { "type": "string" }
+        },
+        "required": ["callback_uri", "event_type", "record_type"]
+      },
+      "SubscriptionResource": {
+        "allOf": [
+          { "$ref": "#/components/schemas/Resource" },
+          {
+            "type": "object",
+            "properties": {
+              "attributes": { "$ref": "#/components/schemas/SubscriptionAttributes" }
+            },
+            "required": ["attributes"]
+          }
+        ]
+      },
+      "SubscriptionDataEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": { "$ref": "#/components/schemas/SubscriptionResource" }
+        },
+        "required": ["data"]
+      },
+      "SubscriptionListEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/SubscriptionResource" }
+          }
+        },
+        "required": ["data"]
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "status": { "type": "string" },
+                "title": { "type": "string" },
+                "detail": { "type": "string" }
+              },
+              "required": ["status", "title"]
+            }
+          }
+        },
+        "required": ["errors"]
+      },
+      "HealthResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string", "example": "ok" }
+        },
+        "required": ["status"]
+      },
+      "StandInStatus": {
+        "type": "object",
+        "properties": {
+          "enabled": { "type": "boolean" },
+          "queue_length": { "type": "integer" }
+        },
+        "required": ["enabled", "queue_length"]
+      },
+      "StandInRequest": {
+        "type": "object",
+        "properties": {
+          "enabled": { "type": "boolean" }
+        },
+        "required": ["enabled"]
+      }
+    }
+  }
+}

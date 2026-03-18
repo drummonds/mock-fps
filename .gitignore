@@ -1,5 +1,7 @@
 bin/
 .task
+docs/*.html
+!docs/api.html
 
 .vscode
 .claude/settings.json
