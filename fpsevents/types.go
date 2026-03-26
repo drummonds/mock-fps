@@ -3,7 +3,7 @@
 //
 // Import this package to enumerate all possible FPS scenarios for testing:
 //
-//	import "github.com/nibble/mock-fps/fpsevents"
+//	import "codeberg.org/hum3/mock-fps/fpsevents"
 //
 //	for _, evt := range fpsevents.WebhookEvents { ... }
 package fpsevents

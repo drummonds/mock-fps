@@ -1,6 +1,6 @@
 package store
 
-import "github.com/nibble/mock-fps/internal/models"
+import "codeberg.org/hum3/mock-fps/internal/models"
 
 // Store defines the storage interface for all resources.
 type Store interface {

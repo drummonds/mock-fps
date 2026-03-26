@@ -9,12 +9,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/nibble/mock-fps/internal/config"
-	"github.com/nibble/mock-fps/internal/handlers"
-	"github.com/nibble/mock-fps/internal/jsonapi"
-	"github.com/nibble/mock-fps/internal/lifecycle"
-	"github.com/nibble/mock-fps/internal/store"
-	"github.com/nibble/mock-fps/internal/webhook"
+	"codeberg.org/hum3/mock-fps/internal/config"
+	"codeberg.org/hum3/mock-fps/internal/handlers"
+	"codeberg.org/hum3/mock-fps/internal/jsonapi"
+	"codeberg.org/hum3/mock-fps/internal/lifecycle"
+	"codeberg.org/hum3/mock-fps/internal/store"
+	"codeberg.org/hum3/mock-fps/internal/webhook"
 )
 
 func main() {

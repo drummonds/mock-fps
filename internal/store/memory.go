@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/nibble/mock-fps/internal/models"
+	"codeberg.org/hum3/mock-fps/internal/models"
 )
 
 // ErrNotFound is returned when a resource is not found.

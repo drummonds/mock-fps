@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/nibble/mock-fps/internal/jsonapi"
-	"github.com/nibble/mock-fps/internal/lifecycle"
-	"github.com/nibble/mock-fps/internal/models"
-	"github.com/nibble/mock-fps/internal/store"
+	"codeberg.org/hum3/mock-fps/internal/jsonapi"
+	"codeberg.org/hum3/mock-fps/internal/lifecycle"
+	"codeberg.org/hum3/mock-fps/internal/models"
+	"codeberg.org/hum3/mock-fps/internal/store"
 )
 
 type ReversalSubmissionHandler struct {

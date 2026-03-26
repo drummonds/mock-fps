@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/nibble/mock-fps/internal/lifecycle"
+	"codeberg.org/hum3/mock-fps/internal/lifecycle"
 )
 
 type AdminHandler struct {

@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nibble/mock-fps/internal/models"
+	"codeberg.org/hum3/mock-fps/internal/models"
 )
 
 func TestPurgeOlderThan(t *testing.T) {

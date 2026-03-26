@@ -12,11 +12,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nibble/mock-fps/internal/handlers"
-	"github.com/nibble/mock-fps/internal/jsonapi"
-	"github.com/nibble/mock-fps/internal/lifecycle"
-	"github.com/nibble/mock-fps/internal/models"
-	"github.com/nibble/mock-fps/internal/store"
+	"codeberg.org/hum3/mock-fps/internal/handlers"
+	"codeberg.org/hum3/mock-fps/internal/jsonapi"
+	"codeberg.org/hum3/mock-fps/internal/lifecycle"
+	"codeberg.org/hum3/mock-fps/internal/models"
+	"codeberg.org/hum3/mock-fps/internal/store"
 )
 
 func setupBenchServer() *httptest.Server {

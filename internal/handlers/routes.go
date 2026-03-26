@@ -3,8 +3,8 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/nibble/mock-fps/internal/lifecycle"
-	"github.com/nibble/mock-fps/internal/store"
+	"codeberg.org/hum3/mock-fps/internal/lifecycle"
+	"codeberg.org/hum3/mock-fps/internal/store"
 )
 
 const basePath = "/v1/transaction/payments"
